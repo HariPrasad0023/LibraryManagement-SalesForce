@@ -27,10 +27,10 @@ global with sharing class LoanRestController {
     global static List<Loan__c> getLoansByMember() {
         RestRequest req = RestContext.request;
         // Retrieve the Member ID from the query parameter
-        String memberId = req.params.get('Member_Id');  // Ensure this matches the query parameter
+        String memberId = req.params.get('email');  // Ensure this matches the query parameter
         
         // Query the loans related to the specified Member ID
-        List<Loan__c> loans = [SELECT Id, Loan_Name__c, Loan_Status__c, Member__c FROM Loan__c WHERE Member__c = :memberId];
+        List<Loan__c> loans = [SELECT Id, Loan_Name__c, Loan_Status__c, Member__c FROM Loan__c WHERE Member__r.Email__c = :memberId];
         
         return loans;
     }
@@ -41,6 +41,9 @@ global with sharing class LoanRestController {
         try {
             // Fetch the loan record by Id
             Loan__c loanToUpdate = [SELECT Id, Loan_Status__c FROM Loan__c WHERE Id = :loanId LIMIT 1];
+
+            // Set today as the return date
+            loanToUpdate.Return_Date__c = Date.today();
 
             // Check if loan exists and update status
             if (loanToUpdate != null) {

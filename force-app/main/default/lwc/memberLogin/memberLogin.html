@@ -1,0 +1,10 @@
+<template>
+    <lightning-card title="Member Login">
+        <div class="slds-m-around_medium">
+            <lightning-input type="email" label="Username" value={email} onchange={handleEmailChange}></lightning-input>
+            <lightning-input type="password" label="Password" value={password} onchange={handlePasswordChange}></lightning-input>
+            <lightning-button label="Login" onclick={handleLogin}></lightning-button>
+            <p if:true={errorMessage} class="slds-text-color_error">{errorMessage}</p>
+        </div>
+    </lightning-card>
+</template>

@@ -1,7 +1,9 @@
 global class LoanReminderScheduler implements Schedulable {
 
 	global void execute(SchedulableContext sc) {
-    	List<Loan__c> loansToRemind = [SELECT Id, Due_Date__c, Member__r.Email__c
+
+		System.debug('Entered LoanReminderScheduler.');
+    	List<Loan__c> loansToRemind = [SELECT Id, Name , Due_Date__c, Member__r.Email__c
                                    	FROM Loan__c
                                    	WHERE Due_Date__c = :Date.today().addDays(1)];
 
