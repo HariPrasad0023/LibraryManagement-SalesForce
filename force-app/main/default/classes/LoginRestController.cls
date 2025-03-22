@@ -1,8 +1,23 @@
 @RestResource(urlMapping='/login/*')
 global without sharing class LoginRestController {
 
+    // Wrapper Class for JSON Response
+    global class LoginResponse {
+        public Boolean success { get; set; }
+        public String message { get; set; }
+        public String memberId { get; set; }
+        public String sessionToken { get; set; }
+
+        public LoginResponse(Boolean success, String message, String memberId, String sessionToken) {
+            this.success = success;
+            this.message = message;
+            this.memberId = memberId;
+            this.sessionToken = sessionToken;
+        }
+    }
+
     @HttpPost
-    global static String login() {
+    global static LoginResponse login() {
         try {
             RestRequest req = RestContext.request;
             String requestBody = req.requestBody.toString();
@@ -12,10 +27,7 @@ global without sharing class LoginRestController {
             String password = (String) data.get('password');
     
             if (String.isBlank(email) || String.isBlank(password)) {
-                return JSON.serialize(new Map<String, Object>{
-                    'success' => false,
-                    'message' => 'Email and Password are required.'
-                });
+                return new LoginResponse(false, 'Email and Password are required.', null, null);
             }
     
             // Hash the incoming password for comparison
@@ -25,19 +37,13 @@ global without sharing class LoginRestController {
             List<Member__c> members = [SELECT Id, Password__c FROM Member__c WHERE Email__c = :email LIMIT 1];
     
             if (members.isEmpty()) {
-                return JSON.serialize(new Map<String, Object>{
-                    'success' => false,
-                    'message' => 'Invalid email or password.'
-                });
+                return new LoginResponse(false, 'Invalid email or password.', null, null);
             }
     
             // Compare hashed input with stored hashed password
             Member__c member = members[0];
             if (member.Password__c != hashedInputPassword) {
-                return JSON.serialize(new Map<String, Object>{
-                    'success' => false,
-                    'message' => 'Invalid email or password.'
-                });
+                return new LoginResponse(false, 'Invalid email or password.', null, null);
             }
     
             // Generate a session token (basic example)
@@ -45,23 +51,14 @@ global without sharing class LoginRestController {
             Blob hash = Crypto.generateDigest('SHA-256', Blob.valueOf(rawToken));
             String sessionToken = EncodingUtil.base64Encode(hash);
 
-            // Store session token in Member__c (Create a new field `Session_Token__c`)
+            // Store session token in Member__c (Ensure `Session_Token__c` field exists)
             member.Session_Token__c = sessionToken;
             update member;
     
-            return JSON.serialize(new Map<String, Object>{
-                'success' => true,
-                'message' => 'Login successful!',
-                'memberId' => member.Id,
-                'sessionToken' => sessionToken
-            });
+            return new LoginResponse(true, 'Login successful!', member.Id, sessionToken);
     
         } catch (Exception e) {
-            return JSON.serialize(new Map<String, Object>{
-                'success' => false,
-                'message' => 'Error: ' + e.getMessage()
-            });
+            return new LoginResponse(false, 'Error: ' + e.getMessage(), null, null);
         }
     }
-    
 }
