@@ -1,8 +1,8 @@
-@RestResource(urlMapping='/fines/*')
-global without sharing class FineRestController {
+@RestResource(urlMapping='/loanUpdate/*')
+global without sharing class LoanUpdateController {
 
     @HttpPost
-    global static void getFinesByMember() {
+    global static List<Loan__c> getLoansByMember() {
         RestRequest req = RestContext.request;
         RestResponse res = RestContext.response;
 
@@ -17,7 +17,7 @@ global without sharing class FineRestController {
             if (String.isEmpty(sessionToken)) {
                 res.responseBody = Blob.valueOf('{"error": "Session token is required"}');
                 res.statusCode = 400;
-                return;
+                return null;
             }
 
             System.debug('=== Extracted Session Token: ' + sessionToken);
@@ -29,39 +29,27 @@ global without sharing class FineRestController {
                 System.debug('=== Invalid Session Token: ' + sessionToken);
                 res.responseBody = Blob.valueOf('{"error": "Invalid session token"}');
                 res.statusCode = 401;
-                return;
+                return null;
             }
 
             Member__c member = members[0];
             System.debug('=== Found Member ID: ' + member.Id);
 
-            // ✅ Fetch the fines related to the member
-            List<Fine__c> fines = [
-                SELECT Id, Loan__r.Loan_Name__c, Fine_Amount__c, Fine_Status__c, Fine_Paid_Date__c
-                FROM Fine__c 
-                WHERE Member__c = :member.Id
-            ];
+            // ✅ Fetch the loans related to the member
+            List<Loan__c> loans = [SELECT Id, Loan_Status__c, Loan_Date__c, Due_Date__c, Return_Date__c, 
+                                   Book__c, Book__r.Name  
+                                   FROM Loan__c WHERE Member__c = :member.Id];
 
-            System.debug('=== Retrieved Fines: ' + fines);
+            System.debug('=== Retrieved Loans: ' + loans);
 
-            // ✅ Send response as JSON
-            Map<String, Object> responseMap = new Map<String, Object>{
-                'success' => true,
-                'fines' => fines
-            };
-
-            res.responseBody = Blob.valueOf(JSON.serialize(responseMap));
-            res.statusCode = 200;
+            return loans;
 
         } catch (Exception e) {
             System.debug('=== ERROR: ' + e.getMessage());
 
-            Map<String, Object> errorResponse = new Map<String, Object>{
-                'error' => e.getMessage()
-            };
-
-            res.responseBody = Blob.valueOf(JSON.serialize(errorResponse));
+            res.responseBody = Blob.valueOf('{"error": "' + e.getMessage() + '"}');
             res.statusCode = 500;
+            return null;
         }
     }
 }

@@ -1,10 +1,37 @@
 <template>
-    <lightning-card title="Member Login">
-        <div class="slds-m-around_medium">
-            <lightning-input type="email" label="Username" value={email} onchange={handleEmailChange}></lightning-input>
-            <lightning-input type="password" label="Password" value={password} onchange={handlePasswordChange}></lightning-input>
-            <lightning-button label="Login" onclick={handleLogin}></lightning-button>
-            <p if:true={errorMessage} class="slds-text-color_error">{errorMessage}</p>
-        </div>
-    </lightning-card>
+    <div if:false={isLoggedIn}>
+        <lightning-card title="Member Login" icon-name="standard:people">
+            <div class="slds-m-around_medium">
+                <lightning-input 
+                    type="email" 
+                    label="Email" 
+                    value={email} 
+                    onchange={handleEmailChange}
+                    required>
+                </lightning-input>
+
+                <lightning-input 
+                    type="password" 
+                    label="Password" 
+                    value={password}
+                    onchange={handlePasswordChange} 
+                    required>
+                </lightning-input>
+
+                <p class="error-message">{errorMessage}</p>
+
+                <lightning-button 
+                    variant="brand" 
+                    label="Login" 
+                    onclick={handleLogin} 
+                    class="slds-m-top_medium">
+                </lightning-button>
+            </div>
+        </lightning-card>
+    </div>
+
+    <!-- Show Home Page if Logged In -->
+    <template if:true={isLoggedIn}>
+        <c-library-home></c-library-home>
+    </template>
 </template>

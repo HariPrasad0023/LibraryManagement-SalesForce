@@ -1,5 +1,5 @@
 @RestResource(urlMapping='/books/*')
-global with sharing class BookRestController {
+global without sharing class BookRestController {
 
     @HttpGet
     global static List<Book__c> getBooks() {

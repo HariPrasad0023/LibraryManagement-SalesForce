@@ -4,15 +4,16 @@ export default class MemberLogin extends LightningElement {
     @track email = '';
     @track password = '';
     @track errorMessage = '';
+    @track isLoggedIn = false;
 
     handleEmailChange(event) {
         this.email = event.target.value.trim();
-        console.log('Email input changed:', this.email);
+        console.log('Captured Email:', this.email);
     }
 
     handlePasswordChange(event) {
         this.password = event.target.value;
-        console.log('Password input changed:', this.password);
+        console.log('Captured Password:', this.password);
     }
 
     async handleLogin() {
@@ -53,7 +54,7 @@ export default class MemberLogin extends LightningElement {
                 console.log('Login successful:', data);
                 localStorage.setItem('sessionToken', data.sessionToken);
                 localStorage.setItem('memberId', data.memberId);
-                this.errorMessage = 'Login successful! Redirecting...';
+                this.isLoggedIn = true;
             } else {
                 console.error('Login failed:', data.message);
                 this.errorMessage = data.message || 'Login failed!';

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata" fqn="LibraryHome">
+    <apiVersion>58.0</apiVersion> <!-- Use your Salesforce API version -->
+    <isExposed>true</isExposed>  <!-- ✅ Expose to Experience Builder -->
+    <targets>
+        <target>lightningCommunity__Page</target>  <!-- ✅ Available for Community Pages -->
+        <target>lightningCommunity__Default</target>
+    </targets>
+</LightningComponentBundle>
