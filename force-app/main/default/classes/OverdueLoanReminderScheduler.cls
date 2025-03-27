@@ -17,4 +17,4 @@ global class OverdueLoanReminderScheduler implements Schedulable {
         	System.debug('No overdue loans found.');
     	}
 	}
-}   
+}

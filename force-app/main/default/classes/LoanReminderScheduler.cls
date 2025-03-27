@@ -1,21 +1,41 @@
 global class LoanReminderScheduler implements Schedulable {
 
-	global void execute(SchedulableContext sc) {
+    global void execute(SchedulableContext sc) {
 
-		System.debug('Entered LoanReminderScheduler.');
-    	List<Loan__c> loansToRemind = [SELECT Id, Name , Due_Date__c, Member__r.Email__c
-                                   	FROM Loan__c
-                                   	WHERE Due_Date__c = :Date.today().addDays(1)];
+        System.debug('Entered LoanReminderScheduler.');
+        List<Loan__c> loansToRemind = [SELECT Id, Name, Due_Date__c, Member__r.Email__c
+                                       FROM Loan__c
+                                       WHERE Due_Date__c = :Date.today().addDays(1)];
 
-    	if (!loansToRemind.isEmpty()) {
-        	for (Loan__c loan : loansToRemind) {
-            	System.debug('Reminder: Book Loan ID: ' + loan.Id);
-            	System.debug('Due Date: ' + loan.Due_Date__c);
-            	System.debug('Member Email: ' + loan.Member__r.Email__c);
-            	System.debug('Message: Dear Member, your book is due tomorrow. Please return it on time to avoid fines.');
-        	}
-    	} else {
-        	System.debug('No loans found that are due tomorrow.');
-    	}
-	}
+        if (!loansToRemind.isEmpty()) {
+            List<Messaging.SingleEmailMessage> emailMessages = new List<Messaging.SingleEmailMessage>();
+            for (Loan__c loan : loansToRemind) {
+                String memberEmail = loan.Member__r.Email__c;
+
+                // Creating email content
+                String subject = 'Reminder: Your Book Loan is Due Tomorrow';
+                String body = 'Dear Member,\n\n'
+                            + 'This is a reminder that your book loan with ID ' + loan.Name + ' is due tomorrow, '
+                            + loan.Due_Date__c.format() + '.\n\n'
+                            + 'Please return the book on time to avoid fines.\n\n'
+                            + 'Thank you for using our library service.\n\n'
+                            + 'Best regards,\n'
+                            + 'Library Management Team';
+
+                // Creating and sending the email
+                Messaging.SingleEmailMessage email = new Messaging.SingleEmailMessage();
+                email.setToAddresses(new String[] { memberEmail });
+                email.setSubject(subject);
+                email.setPlainTextBody(body);
+                emailMessages.add(email);
+            }
+
+            // Sending all emails
+            if (!emailMessages.isEmpty()) {
+                Messaging.sendEmail(emailMessages);
+            }
+        } else {
+            System.debug('No loans found that are due tomorrow.');
+        }
+    }
 }

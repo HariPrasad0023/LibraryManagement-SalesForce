@@ -1,55 +1,34 @@
-@RestResource(urlMapping='/loanUpdate/*')
-global without sharing class LoanUpdateController {
+public without sharing class LoanUpdateController {
 
-    @HttpPost
-    global static List<Loan__c> getLoansByMember() {
-        RestRequest req = RestContext.request;
-        RestResponse res = RestContext.response;
+    @AuraEnabled(cacheable=true)
+    public static List<Loan__c> getLoansByUser() {
+        List<Loan__c> loans = new List<Loan__c>();
 
         try {
-            // ✅ Parse request body
-            String requestBody = req.requestBody.toString();
-            Map<String, Object> requestData = (Map<String, Object>) JSON.deserializeUntyped(requestBody);
-
-            // ✅ Extract sessionToken from request body
-            String sessionToken = (String) requestData.get('sessionToken');
-
-            if (String.isEmpty(sessionToken)) {
-                res.responseBody = Blob.valueOf('{"error": "Session token is required"}');
-                res.statusCode = 400;
-                return null;
+            // ✅ Get the currently logged-in User
+            String loggedInUserId = UserInfo.getUserId();
+            
+            if (String.isBlank(loggedInUserId)) {
+                throw new AuraHandledException('User not logged in');
             }
 
-            System.debug('=== Extracted Session Token: ' + sessionToken);
+            System.debug('=== Logged-In User ID: ' + loggedInUserId);
 
-            // ✅ Fetch the member with the session token
-            List<Member__c> members = [SELECT Id FROM Member__c WHERE Session_Token__c = :sessionToken LIMIT 1];
-
-            if (members.isEmpty()) {
-                System.debug('=== Invalid Session Token: ' + sessionToken);
-                res.responseBody = Blob.valueOf('{"error": "Invalid session token"}');
-                res.statusCode = 401;
-                return null;
-            }
-
-            Member__c member = members[0];
-            System.debug('=== Found Member ID: ' + member.Id);
-
-            // ✅ Fetch the loans related to the member
-            List<Loan__c> loans = [SELECT Id, Loan_Status__c, Loan_Date__c, Due_Date__c, Return_Date__c, 
-                                   Book__c, Book__r.Name  
-                                   FROM Loan__c WHERE Member__c = :member.Id];
+            // ✅ Fetch loans associated with the logged-in User
+            loans = [
+                SELECT Id, Loan_Status__c, Loan_Date__c, Due_Date__c, Return_Date__c, 
+                       Book__c, Book__r.Name  
+                FROM Loan__c 
+                WHERE User__c = :loggedInUserId
+            ];
 
             System.debug('=== Retrieved Loans: ' + loans);
 
-            return loans;
-
         } catch (Exception e) {
             System.debug('=== ERROR: ' + e.getMessage());
-
-            res.responseBody = Blob.valueOf('{"error": "' + e.getMessage() + '"}');
-            res.statusCode = 500;
-            return null;
+            throw new AuraHandledException('Error fetching loans: ' + e.getMessage());
         }
+
+        return loans;
     }
 }

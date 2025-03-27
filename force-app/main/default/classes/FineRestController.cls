@@ -1,67 +1,40 @@
-@RestResource(urlMapping='/fines/*')
-global without sharing class FineRestController {
+public without sharing class FineRestController {
 
-    @HttpPost
-    global static void getFinesByMember() {
-        RestRequest req = RestContext.request;
-        RestResponse res = RestContext.response;
+    @AuraEnabled(cacheable=true)
+    public static List<Fine__c> getFinesByUser() {
+        List<Fine__c> finesList = new List<Fine__c>();
 
         try {
-            // ✅ Parse request body
-            String requestBody = req.requestBody.toString();
-            Map<String, Object> requestData = (Map<String, Object>) JSON.deserializeUntyped(requestBody);
+            // Get the currently logged-in user
+            String loggedInUserId = UserInfo.getUserId();
 
-            // ✅ Extract sessionToken from request body
-            String sessionToken = (String) requestData.get('sessionToken');
-
-            if (String.isEmpty(sessionToken)) {
-                res.responseBody = Blob.valueOf('{"error": "Session token is required"}');
-                res.statusCode = 400;
-                return;
+            if (String.isBlank(loggedInUserId)) {
+                throw new AuraHandledException('User not logged in');
             }
 
-            System.debug('=== Extracted Session Token: ' + sessionToken);
-
-            // ✅ Fetch the member with the session token
-            List<Member__c> members = [SELECT Id FROM Member__c WHERE Session_Token__c = :sessionToken LIMIT 1];
-
-            if (members.isEmpty()) {
-                System.debug('=== Invalid Session Token: ' + sessionToken);
-                res.responseBody = Blob.valueOf('{"error": "Invalid session token"}');
-                res.statusCode = 401;
-                return;
-            }
-
-            Member__c member = members[0];
-            System.debug('=== Found Member ID: ' + member.Id);
-
-            // ✅ Fetch the fines related to the member
-            List<Fine__c> fines = [
-                SELECT Id, Loan__r.Loan_Name__c, Fine_Amount__c, Fine_Status__c, Fine_Paid_Date__c
-                FROM Fine__c 
-                WHERE Member__c = :member.Id
+            // Fetch loans associated with the logged-in User
+            List<Loan__c> loans = [
+                SELECT Id
+                FROM Loan__c
+                WHERE User__c = :loggedInUserId
             ];
 
-            System.debug('=== Retrieved Fines: ' + fines);
+            if (loans.isEmpty()) {
+                throw new AuraHandledException('No loans found for this user');
+            }
 
-            // ✅ Send response as JSON
-            Map<String, Object> responseMap = new Map<String, Object>{
-                'success' => true,
-                'fines' => fines
-            };
-
-            res.responseBody = Blob.valueOf(JSON.serialize(responseMap));
-            res.statusCode = 200;
+            // Get all fines related to those loans
+            finesList = [
+                SELECT Id, Loan__r.Loan_Name__c, Fine_Amount__c, Fine_Status__c, Fine_Paid_Date__c
+                FROM Fine__c
+                WHERE Loan__c IN :loans
+            ];
 
         } catch (Exception e) {
             System.debug('=== ERROR: ' + e.getMessage());
-
-            Map<String, Object> errorResponse = new Map<String, Object>{
-                'error' => e.getMessage()
-            };
-
-            res.responseBody = Blob.valueOf(JSON.serialize(errorResponse));
-            res.statusCode = 500;
+            throw new AuraHandledException(e.getMessage());
         }
+
+        return finesList;
     }
 }

@@ -1,122 +1,108 @@
-import { LightningElement, track } from 'lwc';
+import { LightningElement, wire, track } from 'lwc'; 
+import getBooks from '@salesforce/apex/BookRestController.getBooks';
+import getLoansByUser from '@salesforce/apex/LoanUpdateController.getLoansByUser';
+import getFinesByUser from '@salesforce/apex/FineRestController.getFinesByUser';
 
-export default class LibraryHome extends LightningElement {
+export default class BookList extends LightningElement {
     @track books = [];
     @track loans = [];
     @track fines = [];
+
+    @track showBooks = false; // The reactive property
+    @track showLoans = false;
+    @track showFines = false;
     @track errorMessage = '';
 
+    // Columns for Book DataTable
+    bookColumns = [
+        { label: 'Title', fieldName: 'Name' },
+        { label: 'Genre', fieldName: 'Genre__c' },
+        { label: 'Availability Status', fieldName: 'Availability_Status__c' }
+    ];
+
+    // Columns for Loan DataTable
+    loanColumns = [
+        { label: 'Book Name', fieldName: 'Book__r.Name' },
+        { label: 'Loan Date', fieldName: 'Loan_Date__c' },
+        { label: 'Due Date', fieldName: 'Due_Date__c' },
+        { label: 'Return Date', fieldName: 'Return_Date__c' },
+        { label: 'Status', fieldName: 'Loan_Status__c' }
+    ];
+
+    // Columns for Fine DataTable
+    fineColumns = [
+        { label: 'Fine Name', fieldName: 'Loan__r.Loan_Name__c' },
+        { label: 'Fine Amount', fieldName: 'Fine_Amount__c' },
+        { label: 'Fine Status', fieldName: 'Fine_Status__c' }
+    ];
+
+    // Handle Book Button Click
     async handleBooksClick() {
-        console.log('Fetching books...');
+        // Trigger the @wire call by setting the showBooks property to true
+        this.showBooks = true;
+        this.showLoans = false;
+        this.showFines = false;
+    }
 
-        try {
-            const response = await fetch('/services/apexrest/books/', {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
-            });
-
-            const data = await response.json();
-            console.log('Books API Response:', data);
-
-            if (Array.isArray(data)) {
-                this.books = data;
-            } else {
-                console.error('Unexpected response format:', data);
-            }
-        } catch (error) {
-            console.error('Error fetching books:', error);
+    @wire(getBooks, {trigger : '$showBooks'})
+    wiredBooks({ error, data }) {
+        if (data) {
+            // Successfully fetched books
+            console.log('✅ Books fetched successfully:', JSON.stringify(data));
+            this.books = data;
+            this.errorMessage = ''; // Clear any previous error message
+        } else if (error) {
+            // Error occurred
+            console.error('❌ Error fetching books:', error);
+            this.errorMessage = `Error: ${error.body.message}`;
         }
     }
 
     async handleLoansClick() {
-        console.log('Fetching loans...');
+        // Trigger the @wire call by setting the showLoans property to true
+        this.showLoans = true;
+        this.showBooks = false;
+        this.showFines = false;
+    }
 
-        const sessionToken = localStorage.getItem('sessionToken');
-
-        if (!sessionToken) {
-            console.error('Session token not found. Please log in.');
-            return;
-        }
-
-        // ✅ Creating the request body with sessionToken
-        const requestBody = {
-            sessionToken: sessionToken
-        };
-
-        try {
-            const response = await fetch('/services/apexrest/loanUpdate/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(requestBody) // ✅ Sending the request body
-            });
-
-            const data = await response.json();
-            console.log('Loans API Response:', data);
-
-            if (data.error) {
-                console.error('Error fetching loans:', data.error);
-                this.errorMessage = data.error;
-                return;
-            }
-
-            this.loans = data;
-        } catch (error) {
-            console.error('Error fetching loans:', error);
-            this.errorMessage = 'Failed to retrieve loans. Please try again.';
+    // Use the @wire decorator to call the Apex method
+    @wire(getLoansByUser, {trigger : '$showLoans'})
+    wiredLoans({ error, data }) {
+        if (data) {
+            // If data is returned, update the loans and userId
+            this.loans = data.loans;
+            this.userId = data.userId;
+            this.errorMessage = ''; // Clear any previous error messages
+        } else if (error) {
+            // If an error occurs, update the errorMessage
+            this.errorMessage = error.body.message;
+            this.loans = []; // Clear the loans data
+            this.userId = ''; // Clear the userId
         }
     }
 
-    // Fetch Fines
     async handleFinesClick() {
-        console.log('📢 Fetching fines...');
-
-        const sessionToken = localStorage.getItem('sessionToken');
-
-        if (!sessionToken) {
-            console.error('❌ Session token not found. Please log in.');
-            this.errorMessage = 'Session token is missing. Please log in.';
-            return;
-        }
-
-        // ✅ Creating the request body with sessionToken
-        const requestBody = { sessionToken: sessionToken };
-
-        try {
-            const response = await fetch('/services/apexrest/fines/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestBody)
-            });
-
-            if (!response.ok) {
-                console.error(`❌ HTTP Error: ${response.status} ${response.statusText}`);
-                this.errorMessage = `Error: ${response.statusText} (${response.status})`;
-                return;
-            }
-
-            const data = await response.json();
-            console.log('✅ Fines API Response:', data);
-
-            if (data.error) {
-                console.error('❌ Error fetching fines:', data.error);
-                this.errorMessage = data.error;
-                return;
-            }
-
-            // ✅ Directly assign the fines to `this.fines` just like loans
-            this.fines = data.fines;
-
-            console.log('✅ Processed fines:', this.fines);
-            this.errorMessage = ''; // Clear previous error message if successful
-
-        } catch (error) {
-            console.error('❌ Error fetching fines:', error);
-            this.errorMessage = 'Failed to retrieve fines. Please check your network and try again.';
-        }
+        // Trigger the @wire call by setting the showFines property to true
+         this.showFines = true;
+        this.showBooks = false;
+        this.showLoans = false;
     }
 
-
-
+    // Wire service to call the Apex method
+    @wire(getFinesByUser, { trigger : '$showFines' })
+    wiredFines({ error, data }) {
+        if (data) {
+            // Check if there's an error in the returned data
+            if (data.error) {
+                this.errorMessage = data.error;  // Set error message if there was an issue
+                this.fines = [];  // Clear fines if error exists
+            } else {
+                this.fines = data.fines;  // Set fines data to be displayed
+                this.errorMessage = '';  // Clear any previous error messages
+            }
+        } else if (error) {
+            this.errorMessage = error.body.message;  // Handle the error response
+            this.fines = [];  // Clear fines if there's an error
+        }
+    }
 }
