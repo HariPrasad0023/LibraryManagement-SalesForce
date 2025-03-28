@@ -1,5 +1,5 @@
 public without sharing class FineRestController {
-
+    
     @AuraEnabled(cacheable=true)
     public static List<Fine__c> getFinesByUser() {
         List<Fine__c> finesList = new List<Fine__c>();
@@ -9,30 +9,28 @@ public without sharing class FineRestController {
             String loggedInUserId = UserInfo.getUserId();
 
             if (String.isBlank(loggedInUserId)) {
-                throw new AuraHandledException('User not logged in');
+                return finesList; // Return empty list instead of throwing an error
             }
 
-            // Fetch loans associated with the logged-in User
+            // Fetch all loans associated with the logged-in user
             List<Loan__c> loans = [
-                SELECT Id
-                FROM Loan__c
-                WHERE User__c = :loggedInUserId
+                SELECT Id FROM Loan__c WHERE User__c = :loggedInUserId
             ];
 
             if (loans.isEmpty()) {
-                throw new AuraHandledException('No loans found for this user');
+                return finesList; // Return empty list instead of throwing an error
             }
 
-            // Get all fines related to those loans
+            // Fetch fines for these loans
             finesList = [
-                SELECT Id, Loan__r.Loan_Name__c, Fine_Amount__c, Fine_Status__c, Fine_Paid_Date__c
+                SELECT Id, Loan__c, Loan__r.Loan_Name__c, Fine_Amount__c, Fine_Status__c, Fine_Paid_Date__c
                 FROM Fine__c
                 WHERE Loan__c IN :loans
             ];
 
         } catch (Exception e) {
             System.debug('=== ERROR: ' + e.getMessage());
-            throw new AuraHandledException(e.getMessage());
+            throw new AuraHandledException('An error occurred while fetching fines');
         }
 
         return finesList;

@@ -22,7 +22,7 @@ export default class BookList extends LightningElement {
 
     // Columns for Loan DataTable
     loanColumns = [
-        { label: 'Book Name', fieldName: 'Book__r.Name' },
+        { label: 'Book Name', fieldName: 'BookName' },
         { label: 'Loan Date', fieldName: 'Loan_Date__c' },
         { label: 'Due Date', fieldName: 'Due_Date__c' },
         { label: 'Return Date', fieldName: 'Return_Date__c' },
@@ -31,9 +31,10 @@ export default class BookList extends LightningElement {
 
     // Columns for Fine DataTable
     fineColumns = [
-        { label: 'Fine Name', fieldName: 'Loan__r.Loan_Name__c' },
-        { label: 'Fine Amount', fieldName: 'Fine_Amount__c' },
-        { label: 'Fine Status', fieldName: 'Fine_Status__c' }
+        { label: 'Fine Name', fieldName: 'FineName' },
+        { label: 'Fine Amount', fieldName: 'FineAmount' },
+        { label: 'Fine Status', fieldName: 'FineStatus' },
+        { label: 'Fine Paid Date', fieldName: 'FinePaidDate' }
     ];
 
     // Handle Book Button Click
@@ -48,7 +49,7 @@ export default class BookList extends LightningElement {
     wiredBooks({ error, data }) {
         if (data) {
             // Successfully fetched books
-            console.log('✅ Books fetched successfully:', JSON.stringify(data));
+            // console.log('✅ Books fetched successfully:', JSON.stringify(data));
             this.books = data;
             this.errorMessage = ''; // Clear any previous error message
         } else if (error) {
@@ -70,7 +71,12 @@ export default class BookList extends LightningElement {
     wiredLoans({ error, data }) {
         if (data) {
             // If data is returned, update the loans and userId
-            this.loans = data.loans;
+            // Flatten the response
+            this.loans = data.map(loan => ({
+                ...loan, 
+                BookName: loan.Book__r ? loan.Book__r.Name : 'N/A', // Flatten the field
+                Return_Date__c : loan.Return_Date__c ? loan.Return_Date__c : 'Not Returned Yet' // Default value
+            }));
             this.userId = data.userId;
             this.errorMessage = ''; // Clear any previous error messages
         } else if (error) {
@@ -88,21 +94,32 @@ export default class BookList extends LightningElement {
         this.showLoans = false;
     }
 
-    // Wire service to call the Apex method
-    @wire(getFinesByUser, { trigger : '$showFines' })
+    @wire(getFinesByUser, { trigger: '$showFines' })
     wiredFines({ error, data }) {
         if (data) {
-            // Check if there's an error in the returned data
-            if (data.error) {
-                this.errorMessage = data.error;  // Set error message if there was an issue
-                this.fines = [];  // Clear fines if error exists
-            } else {
-                this.fines = data.fines;  // Set fines data to be displayed
-                this.errorMessage = '';  // Clear any previous error messages
+            try {
+                // console.log('Raw response:', JSON.stringify(data));
+    
+                this.fines = data.map(fine => ({
+                    Id: fine.Id,
+                    LoanId: fine.Loan__c,
+                    FineAmount: fine.Fine_Amount__c ?? 0, // Ensure default value if null
+                    FineStatus: fine.Fine_Status__c ?? 'Unknown', // Default status if missing
+                    FinePaidDate: fine.Fine_Paid_Date__c || 'N/A',
+                    FineName: fine?.Loan__r?.Loan_Name__c || 'N/A'
+                }));
+    
+                // console.log('Final fines array:', JSON.stringify(this.fines));
+                this.errorMessage = ''; // Clear previous errors
+            } catch (err) {
+                console.error('Error processing fines:', err);
+                this.errorMessage = 'Error processing fine data';
+                this.fines = [];
             }
         } else if (error) {
-            this.errorMessage = error.body.message;  // Handle the error response
-            this.fines = [];  // Clear fines if there's an error
+            console.error('Error fetching fines:', JSON.stringify(error));
+            this.errorMessage = error.body?.message || 'An error occurred while fetching fines';
+            this.fines = [];
         }
-    }
+    }       
 }

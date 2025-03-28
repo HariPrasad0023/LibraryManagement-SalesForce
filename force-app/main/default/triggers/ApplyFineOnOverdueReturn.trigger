@@ -20,7 +20,7 @@ trigger ApplyFineOnOverdueReturn on Loan__c (after update) {
                     System.debug('Fine Applied: ' + fineAmount + ' for ' + overdueDays + ' overdue days');
 
                     Fine__c fine = new Fine__c(
-                        Member__c = loan.Member__c, 
+                        User__c = loan.User__c,
                         Loan__c = loan.Id, 
                         Fine_Amount__c = fineAmount, 
                         Fine_Status__c = 'Unpaid'
