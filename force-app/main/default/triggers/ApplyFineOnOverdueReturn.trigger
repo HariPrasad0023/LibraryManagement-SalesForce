@@ -34,6 +34,7 @@ trigger ApplyFineOnOverdueReturn on Loan__c (after update) {
         }
     }
 
+    // Added this line for checking deployment
     // Insert fines outside the loop
     if (!finesToInsert.isEmpty()) {
         insert finesToInsert;
