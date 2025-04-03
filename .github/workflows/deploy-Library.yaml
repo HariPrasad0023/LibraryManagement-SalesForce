@@ -9,11 +9,11 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      # Checkout the latest code from the repository
+      # Step 1: Checkout the repository
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # Install Node.js and npm for running Salesforce CLI
+      # Step 2: Install Node.js and npm (required for Salesforce CLI)
       - name: Install Node.js and npm
         run: |
           sudo apt update
@@ -21,19 +21,19 @@ jobs:
           node -v
           npm -v
 
-      # Install Salesforce CLI globally
+      # Step 3: Install Salesforce CLI
       - name: Install Salesforce CLI
         run: |
           npm install --global @salesforce/cli
           sf --version
 
-      # Install the sfdx-git-delta (SGD) plugin to deploy only changed metadata
+      # Step 4: Install the sfdx-git-delta (SGD) Plugin for metadata deployment
       - name: Install sfdx-git-delta (SGD) Plugin
         run: |
           echo Y | sf plugins:install sfdx-git-delta
           sf plugins
 
-      # Authenticate to Salesforce using JWT-based authentication
+      # Step 5: Authenticate with Salesforce using JWT authentication
       - name: Authenticate with JWT
         run: |
           sf org login jwt \
@@ -42,7 +42,12 @@ jobs:
             --username ${{ secrets.DEPLOYMENT_USER_NAME }} \
             --jwt-key-file <(echo "${{ secrets.JWT_SERVER_KEY }}" | base64 --decode)
 
-      # Identify and deploy only changed metadata using sfdx-git-delta
+      # Step 6: Run Apex tests before deployment
+      - name: Run Apex Tests
+        run: |
+          sf apex run test --target-org ${{ secrets.DEPLOYMENT_USER_NAME }} --result-format human
+
+      # Step 7: Generate metadata delta changes and deploy to Salesforce
       - name: Deploy to Salesforce using sfdx-git-delta
         run: |
           mkdir changed-mdapi
@@ -52,11 +57,11 @@ jobs:
             --output changed-mdapi
           sf project deploy start --metadata-dir changed-mdapi --target-org ${{ secrets.DEPLOYMENT_USER_NAME }}
 
-      # Logout from Salesforce to free up session space
+      # Step 8: Logout from Salesforce after deployment
       - name: Post Deployment Cleanup
         run: |
           sf org logout --no-prompt
 
-      # Print a success message upon successful deployment
+      # Step 9: Print a success message
       - name: Deployment Success
         run: echo "Deployment completed successfully!"
