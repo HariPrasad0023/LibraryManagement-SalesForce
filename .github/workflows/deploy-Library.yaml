@@ -1,69 +1,62 @@
-name: Deploy to Salesforce
+name: Deploy Changed Files to Salesforce
 
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch: # Enables manual execution
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    steps:
-      # Step 1: Checkout the repository
-      - name: Checkout Repository
-        uses: actions/checkout@v4
 
-      # Step 2: Install Node.js and npm (required for Salesforce CLI)
-      - name: Install Node.js and npm
-        run: |
-          sudo apt update
-          sudo apt install -y nodejs npm
-          node -v
-          npm -v
+    steps:
+      # Step 1: Checkout repository with full history
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Ensures full commit history is available
+
+      # Step 2: Set up Node.js (if required for Salesforce CLI)
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
 
       # Step 3: Install Salesforce CLI
       - name: Install Salesforce CLI
         run: |
           npm install --global @salesforce/cli
-          sf --version
 
-      # Step 4: Install the sfdx-git-delta (SGD) Plugin for metadata deployment
-      - name: Install sfdx-git-delta (SGD) Plugin
-        run: |
-          echo Y | sf plugins:install sfdx-git-delta
-          sf plugins
-
-      # Step 5: Authenticate with Salesforce using JWT authentication
+      # Step 4: Authenticate with Salesforce using JWT
       - name: Authenticate with JWT
         run: |
-          echo "${{ secrets.JWT_SERVER_KEY }}" > server.key
           sf org login jwt \
             --instance-url ${{ vars.INSTANCE_URL }} \
             --client-id ${{ secrets.CONSUMER_KEY }} \
             --username ${{ secrets.DEPLOYMENT_USER_NAME }} \
-            --jwt-key-file server.key
+            --jwt-key-file <(echo "${{ secrets.JWT_SERVER_KEY }}")
 
-      # Step 6: Run Apex tests before deployment
-      - name: Run Apex Tests
+      # Step 5: Get the list of changed files
+      - name: Identify changed files
+        id: changed_files
         run: |
-          sf apex run test --target-org ${{ secrets.DEPLOYMENT_USER_NAME }} --result-format human
+          git diff --name-only HEAD~1 > changed_files.txt || echo "No changes found"
+          cat changed_files.txt
 
-      # Step 7: Generate metadata delta changes and deploy to Salesforce
-      - name: Deploy to Salesforce using sfdx-git-delta
+      # Step 6: Deploy only changed files
+      - name: Deploy changed files to Salesforce
+        if: success()
         run: |
-          mkdir changed-mdapi
-          sfdx sgd:source:delta \
-            --to HEAD \
-            --from $(git rev-parse HEAD~1) \
-            --output changed-mdapi
-          sf project deploy start --metadata-dir changed-mdapi --target-org ${{ secrets.DEPLOYMENT_USER_NAME }}
+          while IFS= read -r file; do
+            if [[ -f "$file" ]]; then
+              echo "Deploying: $file"
+              sf project deploy start --source-dir "$file" --target-org ${{ secrets.DEPLOYMENT_USER_NAME }}
+            fi
+          done < changed_files.txt
 
-      # Step 8: Logout from Salesforce after deployment
-      - name: Post Deployment Cleanup
+      # Step 7: Logout from Salesforce
+      - name: Logout from Salesforce
         run: |
-          sf org logout --no-prompt
+          sf org logout --target-org ${{ secrets.DEPLOYMENT_USER_NAME }} --no-prompt
 
-      # Step 9: Print a success message
-      - name: Deployment Success
-        run: echo "Deployment completed successfully!"
+      # Step 8: Print Success Message
+      - name: Deployment Successful
+        run: echo "✅ Deployment to Salesforce completed successfully!"
