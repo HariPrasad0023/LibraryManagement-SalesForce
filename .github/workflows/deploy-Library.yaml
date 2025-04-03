@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main  # Runs on push to main branch
+    paths:
+      - 'force-app/main/default/**'  # Triggers only if files inside this folder change
   workflow_dispatch:  # Allows manual trigger
 
 jobs:
