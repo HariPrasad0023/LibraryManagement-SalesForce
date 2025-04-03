@@ -37,11 +37,12 @@ jobs:
       # Step 5: Authenticate with Salesforce using JWT authentication
       - name: Authenticate with JWT
         run: |
+          echo "${{ secrets.JWT_SERVER_KEY }}" > server.key
           sf org login jwt \
             --instance-url ${{ vars.INSTANCE_URL }} \
             --client-id ${{ secrets.CONSUMER_KEY }} \
             --username ${{ secrets.DEPLOYMENT_USER_NAME }} \
-            --jwt-key-file <(echo "${{ secrets.JWT_SERVER_KEY }}" | base64 --decode)
+            --jwt-key-file server.key
 
       # Step 6: Run Apex tests before deployment
       - name: Run Apex Tests
