@@ -37,7 +37,7 @@ jobs:
       - name: Authenticate with JWT
         run: |
           sf org login jwt \
-            --instance-url ${{ secrets.INSTANCE_URL }} \
+            --instance-url $INSTANCE_URL \
             --client-id ${{ secrets.CONSUMER_KEY }} \
             --username ${{ secrets.DEPLOYMENT_USER_NAME }} \
             --jwt-key-file <(echo "${{ secrets.JWT_SERVER_KEY }}" | base64 --decode)
