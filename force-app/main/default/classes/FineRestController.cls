@@ -3,6 +3,7 @@ public without sharing class FineRestController {
     @AuraEnabled(cacheable=true)
     public static List<Fine__c> getFinesByUser() {
         List<Fine__c> finesList = new List<Fine__c>();
+        // Adding this for Testing the deployment in the Sandbox
 
         try {
             // Get the currently logged-in user
