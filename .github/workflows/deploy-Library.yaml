@@ -3,7 +3,8 @@ name: Deploy Changed Files to Salesforce
 on:
   push:
     branches:
-      - main  # Runs on push to main branch
+      - main        # Deploy to Sandbox
+      - production  # Deploy to Production
     paths:
       - 'force-app/main/default/**'  # Triggers only if files inside this folder change
   workflow_dispatch:  # Allows manual trigger
@@ -30,38 +31,49 @@ jobs:
         run: |
           npm install --global @salesforce/cli
 
-      # Step 4: Authenticate with Salesforce using JWT
+      # Step 4: Set environment variables based on branch
+      - name: Set Environment Variables
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "DEPLOY_CONSUMER_KEY=${{ secrets.CONSUMER_KEY }}" >> $GITHUB_ENV
+            echo "DEPLOY_USERNAME=${{ secrets.DEPLOYMENT_USER_NAME }}" >> $GITHUB_ENV
+          elif [[ "${{ github.ref }}" == "refs/heads/production" ]]; then
+            echo "DEPLOY_CONSUMER_KEY=${{ secrets.PRODUCTION_CONSUMER_KEY }}" >> $GITHUB_ENV
+            echo "DEPLOY_USERNAME=${{ secrets.PRODUCTION_DEPLOYMENT_USER_NAME }}" >> $GITHUB_ENV
+          fi
+
+      # Step 5: Authenticate with Salesforce using JWT
       - name: Authenticate with JWT
         run: |
           sf org login jwt \
             --instance-url ${{ vars.INSTANCE_URL }} \
-            --client-id ${{ secrets.CONSUMER_KEY }} \
-            --username ${{ secrets.DEPLOYMENT_USER_NAME }} \
+            --client-id ${{ env.DEPLOY_CONSUMER_KEY }} \
+            --username ${{ env.DEPLOY_USERNAME }} \
             --jwt-key-file <(echo "${{ secrets.JWT_SERVER_KEY }}")
 
-      # Step 5: Get the list of changed files
+      # Step 6: Get the list of changed files
       - name: Identify changed files
         id: changed_files
         run: |
           git diff --name-only HEAD~1 > changed_files.txt || echo "No changes found"
           cat changed_files.txt
 
-      # Step 6: Deploy only changed files
+      # Step 7: Deploy only changed files
       - name: Deploy changed files to Salesforce
         if: success()
         run: |
           while IFS= read -r file; do
             if [[ -f "$file" ]]; then
               echo "Deploying: $file"
-              sf project deploy start --source-dir "$file" --target-org ${{ secrets.DEPLOYMENT_USER_NAME }}
+              sf project deploy start --source-dir "$file" --target-org ${{ env.DEPLOY_USERNAME }}
             fi
           done < changed_files.txt
 
-      # Step 7: Logout from Salesforce
+      # Step 8: Logout from Salesforce
       - name: Logout from Salesforce
         run: |
-          sf org logout --target-org ${{ secrets.DEPLOYMENT_USER_NAME }} --no-prompt
+          sf org logout --target-org ${{ env.DEPLOY_USERNAME }} --no-prompt
 
-      # Step 8: Print Success Message
+      # Step 9: Print Success Message
       - name: Deployment Successful
         run: echo "✅ Deployment to Salesforce completed successfully!"
