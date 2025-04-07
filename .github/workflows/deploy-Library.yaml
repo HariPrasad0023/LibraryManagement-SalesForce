@@ -59,6 +59,7 @@ jobs:
           mkdir -p retrieved
           sf project retrieve start \
             --target-org ${{ env.DEPLOY_USERNAME }} \
+            --manifest manifest/package.xml \
             --output-dir retrieved
           cp -r retrieved/* force-app/main/default/
 
