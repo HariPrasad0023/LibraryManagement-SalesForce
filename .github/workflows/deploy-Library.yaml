@@ -90,12 +90,15 @@ jobs:
       # Step 9: Commit retrieved metadata only on manual dispatch to production
       - name: Commit Retrieved Metadata
         if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/production'
+        env:
+          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+
           git add force-app/main/default
           git commit -m "🔄 Synced metadata from Production" || echo "Nothing to commit"
-          git push origin production
+          git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }} HEAD:production
 
       # Step 10: Logout from Salesforce
       - name: Logout from Salesforce
