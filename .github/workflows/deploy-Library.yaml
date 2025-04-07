@@ -14,97 +14,97 @@ jobs:
     runs-on: ubuntu-latest
 
   steps:
-  # Step 1: Checkout repository with full history
-  - name: Checkout repository
-    uses: actions/checkout@v4
-    with:
-      fetch-depth: 0  # Ensures full commit history is available
+    # Step 1: Checkout repository with full history
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Ensures full commit history is available
 
-  # Step 2: Set up Node.js (if required for Salesforce CLI)
-  - name: Set up Node.js
-    uses: actions/setup-node@v3
-    with:
-      node-version: '18'
+    # Step 2: Set up Node.js (if required for Salesforce CLI)
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
 
-  # Step 3: Install Salesforce CLI
-  - name: Install Salesforce CLI
-    run: |
-      npm install --global @salesforce/cli
+    # Step 3: Install Salesforce CLI
+    - name: Install Salesforce CLI
+      run: |
+        npm install --global @salesforce/cli
 
-  # Step 4: Set environment variables based on branch
-  - name: Set Environment Variables
-    run: |
-      if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-        echo "DEPLOY_CONSUMER_KEY=${{ secrets.CONSUMER_KEY }}" >> $GITHUB_ENV
-        echo "DEPLOY_USERNAME=${{ secrets.DEPLOYMENT_USER_NAME }}" >> $GITHUB_ENV
-        echo "DEPLOY_TYPE=sandbox" >> $GITHUB_ENV
-      elif [[ "${{ github.ref }}" == "refs/heads/production" ]]; then
-        echo "DEPLOY_CONSUMER_KEY=${{ secrets.PRODUCTION_CONSUMER_KEY }}" >> $GITHUB_ENV
-        echo "DEPLOY_USERNAME=${{ secrets.PRODUCTION_DEPLOYMENT_USER_NAME }}" >> $GITHUB_ENV
-        echo "DEPLOY_TYPE=production" >> $GITHUB_ENV
-      fi
+    # Step 4: Set environment variables based on branch
+    - name: Set Environment Variables
+      run: |
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          echo "DEPLOY_CONSUMER_KEY=${{ secrets.CONSUMER_KEY }}" >> $GITHUB_ENV
+          echo "DEPLOY_USERNAME=${{ secrets.DEPLOYMENT_USER_NAME }}" >> $GITHUB_ENV
+          echo "DEPLOY_TYPE=sandbox" >> $GITHUB_ENV
+        elif [[ "${{ github.ref }}" == "refs/heads/production" ]]; then
+          echo "DEPLOY_CONSUMER_KEY=${{ secrets.PRODUCTION_CONSUMER_KEY }}" >> $GITHUB_ENV
+          echo "DEPLOY_USERNAME=${{ secrets.PRODUCTION_DEPLOYMENT_USER_NAME }}" >> $GITHUB_ENV
+          echo "DEPLOY_TYPE=production" >> $GITHUB_ENV
+        fi
 
-  # Step 5: Authenticate with Salesforce using JWT
-  - name: Authenticate with JWT
-    run: |
-      sf org login jwt \
-        --instance-url ${{ vars.INSTANCE_URL }} \
-        --client-id ${{ env.DEPLOY_CONSUMER_KEY }} \
-        --username ${{ env.DEPLOY_USERNAME }} \
-        --jwt-key-file <(echo "${{ secrets.JWT_SERVER_KEY }}")
+    # Step 5: Authenticate with Salesforce using JWT
+    - name: Authenticate with JWT
+      run: |
+        sf org login jwt \
+          --instance-url ${{ vars.INSTANCE_URL }} \
+          --client-id ${{ env.DEPLOY_CONSUMER_KEY }} \
+          --username ${{ env.DEPLOY_USERNAME }} \
+          --jwt-key-file <(echo "${{ secrets.JWT_SERVER_KEY }}")
 
-  # Step 6: Retrieve metadata only on manual dispatch to production
-  - name: Retrieve Metadata from Production
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/production'
-    run: |
-      mkdir -p retrieved
-      sf project retrieve start \
-        --target-org ${{ env.DEPLOY_USERNAME }} \
-        --package-name "*" \
-        --output-dir retrieved
+    # Step 6: Retrieve metadata only on manual dispatch to production
+    - name: Retrieve Metadata from Production
+      if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/production'
+      run: |
+        mkdir -p retrieved
+        sf project retrieve start \
+          --target-org ${{ env.DEPLOY_USERNAME }} \
+          --package-name "*" \
+          --output-dir retrieved
 
-      cp -r retrieved/* force-app/main/default/
+        cp -r retrieved/* force-app/main/default/
 
-  # Step 7: Get the list of changed files (only on push events)
-  - name: Identify changed files
-    id: changed_files
-    if: github.event_name == 'push'
-    continue-on-error: true
-    run: |
-      git diff --name-only HEAD~1 > changed_files.txt
-      cat changed_files.txt || echo "No changes found"
+    # Step 7: Get the list of changed files (only on push events)
+    - name: Identify changed files
+      id: changed_files
+      if: github.event_name == 'push'
+      continue-on-error: true
+      run: |
+        git diff --name-only HEAD~1 > changed_files.txt
+        cat changed_files.txt || echo "No changes found"
 
-  # Step 8: Deploy only changed files (only on push events)
-  - name: Deploy changed files to Salesforce
-    if: github.event_name == 'push' && success()
-    run: |
-      if [ -s changed_files.txt ]; then
-        while IFS= read -r file; do
-          if [[ -f "$file" ]]; then
-            echo "Deploying: $file"
-            sf project deploy start --source-dir "$file" --target-org ${{ env.DEPLOY_USERNAME }}
-          fi
-        done < changed_files.txt
-      else
-        echo "No changed files to deploy."
-      fi
+    # Step 8: Deploy only changed files (only on push events)
+    - name: Deploy changed files to Salesforce
+      if: github.event_name == 'push' && success()
+      run: |
+        if [ -s changed_files.txt ]; then
+          while IFS= read -r file; do
+            if [[ -f "$file" ]]; then
+              echo "Deploying: $file"
+              sf project deploy start --source-dir "$file" --target-org ${{ env.DEPLOY_USERNAME }}
+            fi
+          done < changed_files.txt
+        else
+          echo "No changed files to deploy."
+        fi
 
-  # Step 9: Commit retrieved metadata only on manual dispatch to production
-  - name: Commit Retrieved Metadata
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/production'
-    run: |
-      git config user.name "github-actions[bot]"
-      git config user.email "github-actions[bot]@users.noreply.github.com"
+    # Step 9: Commit retrieved metadata only on manual dispatch to production
+    - name: Commit Retrieved Metadata
+      if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/production'
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      git add force-app/main/default
-      git commit -m "🔄 Synced metadata from Production" || echo "Nothing to commit"
-      git push origin production
+        git add force-app/main/default
+        git commit -m "🔄 Synced metadata from Production" || echo "Nothing to commit"
+        git push origin production
 
-  # Step 10: Logout from Salesforce
-  - name: Logout from Salesforce
-    run: |
-      sf org logout --target-org ${{ env.DEPLOY_USERNAME }} --no-prompt
+    # Step 10: Logout from Salesforce
+    - name: Logout from Salesforce
+      run: |
+        sf org logout --target-org ${{ env.DEPLOY_USERNAME }} --no-prompt
 
-  # Step 11: Print Success Message
-  - name: Deployment Successful
-    run: echo "✅ Deployment to Salesforce completed successfully!"
+    # Step 11: Print Success Message
+    - name: Deployment Successful
+      run: echo "✅ Deployment to Salesforce completed successfully!"
