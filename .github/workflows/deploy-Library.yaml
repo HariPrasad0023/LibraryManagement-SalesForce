@@ -93,8 +93,8 @@ jobs:
         env:
           PAT: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
-          git config user.name "Your GitHub Username"
-          git config user.email "your-email@example.com"
+          git config user.name "HariPrasad0023"
+          git config user.email "c.hariprasad@iiitb.ac.in"
 
           git add force-app/main/default
           git commit -m "🔄 Synced metadata from Production" || echo "Nothing to commit"
