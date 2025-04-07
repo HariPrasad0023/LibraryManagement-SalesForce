@@ -91,14 +91,18 @@ jobs:
       - name: Commit Retrieved Metadata
         if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/production'
         env:
-          PAT: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
-          git config user.name "HariPrasad0023"
-          git config user.email "c.hariprasad@iiitb.ac.in"
+          git config --global user.name "HariPrasad0023"
+          git config --global user.email "c.hariprasad@iiitb.ac.in"
+
+          # Remove all remotes and set fresh one
+          git remote remove origin
+          git remote add origin https://HariPrasad0023:${GITHUB_TOKEN}@github.com/${{ github.repository }}
 
           git add force-app/main/default
           git commit -m "🔄 Synced metadata from Production" || echo "Nothing to commit"
-          git push https://x-access-token:${PAT}@github.com/${{ github.repository }} HEAD:production
+          git push origin HEAD:production
 
 
       # Step 10: Logout from Salesforce
