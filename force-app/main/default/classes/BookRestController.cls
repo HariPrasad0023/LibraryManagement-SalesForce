@@ -11,5 +11,7 @@ public without sharing class BookRestController {
             System.debug('=== ERROR: ' + e.getMessage());
             return new List<Book__c>(); // Return empty list instead of throwing an error
         }
+
+        // New comment added to check the pipeline functionality
     }
 }
