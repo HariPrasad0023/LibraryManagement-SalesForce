@@ -87,18 +87,19 @@ jobs:
             echo "No changed files to deploy."
           fi
 
-      # Step 9: Commit retrieved metadata only on manual dispatch to production
+      # Step 9: Commit Retrieved Metadata
       - name: Commit Retrieved Metadata
         if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/production'
         env:
-          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          PAT: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
+          git config user.name "Your GitHub Username"
+          git config user.email "your-email@example.com"
 
           git add force-app/main/default
           git commit -m "🔄 Synced metadata from Production" || echo "Nothing to commit"
-          git push https://x-access-token:${{ secrets.PERSONAL_ACCESS_TOKEN }}@github.com/${{ github.repository }} HEAD:production
+          git push https://x-access-token:${PAT}@github.com/${{ github.repository }} HEAD:production
+
 
       # Step 10: Logout from Salesforce
       - name: Logout from Salesforce
