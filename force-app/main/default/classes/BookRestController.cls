@@ -12,6 +12,6 @@ public without sharing class BookRestController {
             return new List<Book__c>(); // Return empty list instead of throwing an error
         }
 
-        // New comment added to check the pipeline functionality
+        // Adding a new comment to invoke CI/CD pipeline
     }
 }
