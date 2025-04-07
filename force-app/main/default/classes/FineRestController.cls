@@ -3,7 +3,6 @@ public without sharing class FineRestController {
     @AuraEnabled(cacheable=true)
     public static List<Fine__c> getFinesByUser() {
         List<Fine__c> finesList = new List<Fine__c>();
-        // Adding this for Testing the deployment in the Sandbox
 
         try {
             // Get the currently logged-in user
@@ -24,7 +23,7 @@ public without sharing class FineRestController {
 
             // Fetch fines for these loans
             finesList = [
-                SELECT Id, Loan__c, Loan__r.Loan_Name__c, Fine_Amount__c, Fine_Status__c, Fine_Paid_Date__c
+                SELECT Id, Loan__c, Loan__r.Name, Fine_Amount__c, Fine_Status__c, Fine_Paid_Date__c
                 FROM Fine__c
                 WHERE Loan__c IN :loans
             ];
