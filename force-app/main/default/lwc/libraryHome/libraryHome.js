@@ -8,7 +8,7 @@ export default class BookList extends LightningElement {
     @track loans = [];
     @track fines = [];
 
-    @track showBooks = false; // The reactive property
+    @track showBooks = false;
     @track showLoans = false;
     @track showFines = false;
     @track errorMessage = '';
@@ -38,88 +38,96 @@ export default class BookList extends LightningElement {
     ];
 
     // Handle Book Button Click
-    async handleBooksClick() {
-        // Trigger the @wire call by setting the showBooks property to true
+    handleBooksClick() {
         this.showBooks = true;
         this.showLoans = false;
         this.showFines = false;
+        this.errorMessage = '';
+        this.loans = [];
+        this.fines = [];
     }
 
-    @wire(getBooks, {trigger : '$showBooks'})
+    @wire(getBooks, { trigger: '$showBooks' })
     wiredBooks({ error, data }) {
         if (data) {
-            // Successfully fetched books
-            // console.log('✅ Books fetched successfully:', JSON.stringify(data));
             this.books = data;
-            this.errorMessage = ''; // Clear any previous error message
+            this.errorMessage = '';
         } else if (error) {
-            // Error occurred
             console.error('❌ Error fetching books:', error);
-            this.errorMessage = `Error: ${error.body.message}`;
+            this.errorMessage = "An error occurred while fetching books.";
         }
     }
 
-    async handleLoansClick() {
-        // Trigger the @wire call by setting the showLoans property to true
+    // Handle Loan Button Click
+    handleLoansClick() {
         this.showLoans = true;
         this.showBooks = false;
         this.showFines = false;
+        this.errorMessage = '';
+        this.books = [];
+        this.fines = [];
     }
 
-    // Use the @wire decorator to call the Apex method
-    @wire(getLoansByUser, {trigger : '$showLoans'})
+    @wire(getLoansByUser, { trigger: '$showLoans' })
     wiredLoans({ error, data }) {
         if (data) {
-            // If data is returned, update the loans and userId
-            // Flatten the response
             this.loans = data.map(loan => ({
                 ...loan, 
-                BookName: loan.Book__r ? loan.Book__r.Name : 'N/A', // Flatten the field
-                Return_Date__c : loan.Return_Date__c ? loan.Return_Date__c : 'Not Returned Yet' // Default value
+                BookName: loan.Book__r ? loan.Book__r.Name : 'N/A',
+                Return_Date__c: loan.Return_Date__c ? loan.Return_Date__c : 'Not Returned Yet'
             }));
-            this.userId = data.userId;
-            this.errorMessage = ''; // Clear any previous error messages
+            this.errorMessage = '';
         } else if (error) {
-            // If an error occurs, update the errorMessage
-            this.errorMessage = error.body.message;
-            this.loans = []; // Clear the loans data
-            this.userId = ''; // Clear the userId
+            console.error('❌ Error fetching loans:', error);
+
+            if (error.body?.message?.includes("You do not have access to the Apex class")) {
+                this.errorMessage = "Please login to access this information.";
+            } else {
+                this.errorMessage = "An error occurred while fetching loans.";
+            }
+
+            this.loans = [];
         }
     }
 
-    async handleFinesClick() {
-        // Trigger the @wire call by setting the showFines property to true
-         this.showFines = true;
+    // Handle Fine Button Click
+    handleFinesClick() {
+        this.showFines = true;
         this.showBooks = false;
         this.showLoans = false;
+        this.errorMessage = '';
+        this.books = [];
+        this.loans = [];
     }
 
     @wire(getFinesByUser, { trigger: '$showFines' })
     wiredFines({ error, data }) {
         if (data) {
             try {
-                // console.log('Raw response:', JSON.stringify(data));
-    
                 this.fines = data.map(fine => ({
                     Id: fine.Id,
                     LoanId: fine.Loan__c,
-                    FineAmount: fine.Fine_Amount__c ?? 0, // Ensure default value if null
-                    FineStatus: fine.Fine_Status__c ?? 'Unknown', // Default status if missing
+                    FineAmount: fine.Fine_Amount__c ?? 0,
+                    FineStatus: fine.Fine_Status__c ?? 'Unknown',
                     FinePaidDate: fine.Fine_Paid_Date__c || 'N/A',
                     FineName: fine?.Loan__r?.Loan_Name__c || 'N/A'
                 }));
-    
-                // console.log('Final fines array:', JSON.stringify(this.fines));
-                this.errorMessage = ''; // Clear previous errors
+                this.errorMessage = '';
             } catch (err) {
-                console.error('Error processing fines:', err);
-                this.errorMessage = 'Error processing fine data';
+                console.error('❌ Error processing fines:', err);
+                this.errorMessage = 'Error processing fine data.';
                 this.fines = [];
             }
         } else if (error) {
-            console.error('Error fetching fines:', JSON.stringify(error));
-            this.errorMessage = error.body?.message || 'An error occurred while fetching fines';
+            console.error('❌ Error fetching fines:', error);
+
+            if (error.body?.message?.includes("You do not have access to the Apex class")) {
+                this.errorMessage = "Please login to access this information.";
+            } else {
+                this.errorMessage = "An error occurred while fetching fines.";
+            }
+
             this.fines = [];
         }
-    }       
+    }
 }
